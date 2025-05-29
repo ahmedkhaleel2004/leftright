@@ -316,7 +316,7 @@ export default function Home() {
     if (!startTime || !endTime || charTimestamps.length === 0) return 0;
 
     // Find all characters typed by this hand and their timestamps
-    let handCharIndices: number[] = [];
+    const handCharIndices: number[] = [];
     for (let i = 0; i < userInput.length; i++) {
       const charHand = getHandForChar(text[i]);
       if (charHand === hand) {
