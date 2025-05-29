@@ -46,6 +46,11 @@ Add your Upstash Redis credentials to `.env.local`:
 ```
 UPSTASH_REDIS_REST_URL=your_redis_url
 UPSTASH_REDIS_REST_TOKEN=your_redis_token
+
+# Optional: GitHub Personal Access Token
+# Increases API rate limit from 60 to 5000 requests/hour
+# Create at: https://github.com/settings/tokens/new (no special permissions needed)
+GITHUB_TOKEN=your_github_token_here
 ```
 
 4. Run the development server:
