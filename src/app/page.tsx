@@ -879,6 +879,7 @@ export default function Home() {
 
         <div className="text-center text-gray-500 text-xs mt-16 space-y-1">
           <p>{`// type the text as fast as you can`}</p>
+          <p>{`// we will compare your left/right hand speed to the community average`}</p>
           <p>{`// errors allowed - accuracy tracked`}</p>
         </div>
       </div>
