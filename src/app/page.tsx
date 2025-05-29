@@ -262,6 +262,22 @@ export default function Home() {
     setText(generateRandomParagraph(3));
   }, []);
 
+  // Helper function to count consecutive wrong characters from the end
+  const countConsecutiveWrongChars = (
+    input: string,
+    targetText: string
+  ): number => {
+    let count = 0;
+    for (let i = input.length - 1; i >= 0; i--) {
+      if (input[i] !== targetText[i]) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  };
+
   // Get which hand types a character based on current layout
   const getHandForChar = useCallback(
     (char: string): "left" | "right" | "space" => {
@@ -438,6 +454,34 @@ export default function Home() {
 
     // Allow typing up to the text length
     if (value.length <= text.length) {
+      // Check for consecutive wrong characters before allowing new input
+      if (value.length > userInput.length) {
+        // Count current consecutive wrong chars before adding the new one
+        const currentConsecutiveWrong = countConsecutiveWrongChars(
+          userInput,
+          text
+        );
+
+        // Check if the new character would be wrong
+        const newCharIndex = value.length - 1;
+        const targetChar = text[newCharIndex];
+        const typedChar = value[newCharIndex];
+        const isNewCharWrong = typedChar !== targetChar;
+
+        // If we already have 5 consecutive wrong chars and the new one is also wrong, block it
+        if (currentConsecutiveWrong >= 5 && isNewCharWrong) {
+          // Flash the input border red to indicate the limit
+          const input = inputRef.current;
+          if (input) {
+            input.style.borderColor = "#ef4444";
+            setTimeout(() => {
+              input.style.borderColor = "";
+            }, 200);
+          }
+          return; // Don't allow the input
+        }
+      }
+
       // Track hand statistics and timestamp for new character
       if (value.length > userInput.length) {
         const newCharIndex = value.length - 1;
