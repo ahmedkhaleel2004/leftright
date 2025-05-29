@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Use Edge Runtime for better caching on Vercel
+export const runtime = "edge";
+
 // Alternative approach using Next.js Data Cache (uncomment to use):
 // import { unstable_cache } from "next/cache";
 //
@@ -49,7 +52,15 @@ export async function GET() {
     const data = await response.json();
     const stars = data.stargazers_count || 0;
 
-    return NextResponse.json({ stars });
+    // Return with explicit cache headers for Vercel
+    return NextResponse.json(
+      { stars },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching GitHub stars:", error);
     // Return 0 on error, with a shorter cache time

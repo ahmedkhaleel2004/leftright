@@ -94,6 +94,7 @@ export default function Home() {
 
   // Fetch GitHub stars on mount
   useEffect(() => {
+    // Option 1: Current API route approach
     fetch("/api/github-stars")
       .then((res) => res.json())
       .then((data) => setGithubStars(data.stars))
