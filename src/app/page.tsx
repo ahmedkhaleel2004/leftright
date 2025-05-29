@@ -317,7 +317,7 @@ type LayoutType = keyof typeof KEYBOARD_LAYOUTS;
 // Test duration options
 const TEST_OPTIONS = {
   words: {
-    short: { label: "20 words", value: 20 },
+    short: { label: "15 words", value: 15 },
     medium: { label: "50 words", value: 50 },
     long: { label: "100 words", value: 100 },
   },
@@ -353,6 +353,7 @@ export default function Home() {
   const [testMode, setTestMode] = useState<TestMode>("words");
   const [testDuration, setTestDuration] = useState<TestDuration>("short");
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Generate text based on test mode and duration
@@ -876,50 +877,62 @@ export default function Home() {
               [{value.name}]
             </button>
           ))}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`px-3 py-1 border rounded transition-colors ml-4 ${
+              showSettings
+                ? "border-white text-black bg-white"
+                : "border-gray-700 hover:border-white hover:text-white"
+            }`}
+          >
+            [settings]
+          </button>
         </div>
 
         {/* Test mode and duration selector */}
-        <div className="flex flex-col gap-2 items-center mb-8 text-xs">
-          <div className="flex gap-2">
-            <button
-              onClick={() => changeTestSettings("words", testDuration)}
-              className={`px-3 py-1 border rounded transition-colors ${
-                testMode === "words"
-                  ? "border-white text-black bg-white"
-                  : "border-gray-700 hover:border-white hover:text-white"
-              }`}
-            >
-              [words]
-            </button>
-            <button
-              onClick={() => changeTestSettings("time", testDuration)}
-              className={`px-3 py-1 border rounded transition-colors ${
-                testMode === "time"
-                  ? "border-white text-black bg-white"
-                  : "border-gray-700 hover:border-white hover:text-white"
-              }`}
-            >
-              [time]
-            </button>
-          </div>
-          <div className="flex gap-2">
-            {Object.entries(TEST_OPTIONS[testMode]).map(([key, option]) => (
+        {showSettings && (
+          <div className="flex flex-col gap-2 items-center mb-8 text-xs">
+            <div className="flex gap-2">
               <button
-                key={key}
-                onClick={() =>
-                  changeTestSettings(testMode, key as TestDuration)
-                }
+                onClick={() => changeTestSettings("words", testDuration)}
                 className={`px-3 py-1 border rounded transition-colors ${
-                  testDuration === key
+                  testMode === "words"
                     ? "border-white text-black bg-white"
                     : "border-gray-700 hover:border-white hover:text-white"
                 }`}
               >
-                [{option.label}]
+                [words]
               </button>
-            ))}
+              <button
+                onClick={() => changeTestSettings("time", testDuration)}
+                className={`px-3 py-1 border rounded transition-colors ${
+                  testMode === "time"
+                    ? "border-white text-black bg-white"
+                    : "border-gray-700 hover:border-white hover:text-white"
+                }`}
+              >
+                [time]
+              </button>
+            </div>
+            <div className="flex gap-2">
+              {Object.entries(TEST_OPTIONS[testMode]).map(([key, option]) => (
+                <button
+                  key={key}
+                  onClick={() =>
+                    changeTestSettings(testMode, key as TestDuration)
+                  }
+                  className={`px-3 py-1 border rounded transition-colors ${
+                    testDuration === key
+                      ? "border-white text-black bg-white"
+                      : "border-gray-700 hover:border-white hover:text-white"
+                  }`}
+                >
+                  [{option.label}]
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {!isFinished ? (
           <>
