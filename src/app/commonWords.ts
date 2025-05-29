@@ -643,3 +643,24 @@ export function generateRandomParagraph(sentenceCount: number = 3): string {
   // Join with spaces, no periods
   return sentences.join(" ");
 }
+
+// Generate text with exact word count
+export function generateTextWithWordCount(wordCount: number): string {
+  const words: string[] = [];
+
+  while (words.length < wordCount) {
+    // Generate a sentence
+    const sentence = generateRandomSentence();
+    const sentenceWords = sentence.split(" ");
+
+    // If adding the whole sentence would exceed word count, add only needed words
+    if (words.length + sentenceWords.length > wordCount) {
+      const wordsNeeded = wordCount - words.length;
+      words.push(...sentenceWords.slice(0, wordsNeeded));
+    } else {
+      words.push(...sentenceWords);
+    }
+  }
+
+  return words.join(" ");
+}

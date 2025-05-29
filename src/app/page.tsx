@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generateRandomParagraph } from "./commonWords";
+import {
+  generateRandomParagraph,
+  generateTextWithWordCount,
+} from "./commonWords";
 
 // Keyboard layout definitions
 const KEYBOARD_LAYOUTS = {
@@ -311,6 +314,23 @@ const KEYBOARD_LAYOUTS = {
 
 type LayoutType = keyof typeof KEYBOARD_LAYOUTS;
 
+// Test duration options
+const TEST_OPTIONS = {
+  words: {
+    short: { label: "20 words", value: 20 },
+    medium: { label: "50 words", value: 50 },
+    long: { label: "100 words", value: 100 },
+  },
+  time: {
+    short: { label: "15 seconds", value: 15 },
+    medium: { label: "30 seconds", value: 30 },
+    long: { label: "60 seconds", value: 60 },
+  },
+};
+
+type TestMode = "words" | "time";
+type TestDuration = "short" | "medium" | "long";
+
 export default function Home() {
   const [layout, setLayout] = useState<LayoutType>("qwerty");
   const [text, setText] = useState("");
@@ -329,11 +349,61 @@ export default function Home() {
   const [communityAverage, setCommunityAverage] = useState<number | null>(null);
   const [communityCount, setCommunityCount] = useState<number | null>(null);
   const [isLoadingAverage, setIsLoadingAverage] = useState(false);
+  const [githubStars, setGithubStars] = useState<number | null>(null);
+  const [testMode, setTestMode] = useState<TestMode>("words");
+  const [testDuration, setTestDuration] = useState<TestDuration>("short");
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Generate text based on test mode and duration
+  const generateTestText = useCallback(() => {
+    if (testMode === "words") {
+      const wordCount = TEST_OPTIONS.words[testDuration].value;
+      // Use the new function to generate exact word count
+      return generateTextWithWordCount(wordCount);
+    } else {
+      // For time mode, generate a long text that won't run out
+      // Generate enough for ~200 WPM for the duration
+      const maxWords = Math.ceil(
+        (200 * TEST_OPTIONS.time[testDuration].value) / 60
+      );
+      const sentenceCount = Math.ceil(maxWords / 12);
+      return generateRandomParagraph(sentenceCount);
+    }
+  }, [testMode, testDuration]);
 
   // Generate initial text after mount to avoid hydration mismatch
   useEffect(() => {
-    setText(generateRandomParagraph(3));
+    setText(generateTestText());
+  }, [generateTestText]);
+
+  // Timer for time-based tests
+  useEffect(() => {
+    if (testMode === "time" && isStarted && !isFinished && startTime) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const duration = TEST_OPTIONS.time[testDuration].value;
+        const remaining = duration - elapsed;
+
+        setTimeRemaining(remaining);
+
+        if (remaining <= 0) {
+          setIsFinished(true);
+          setEndTime(Date.now());
+          setTimeRemaining(0);
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [testMode, isStarted, isFinished, startTime, testDuration]);
+
+  // Fetch GitHub stars on mount
+  useEffect(() => {
+    fetch("/api/github-stars")
+      .then((res) => res.json())
+      .then((data) => setGithubStars(data.stars))
+      .catch((err) => console.error("Error fetching GitHub stars:", err));
   }, []);
 
   // Helper function to count consecutive wrong characters from the end
@@ -371,7 +441,11 @@ export default function Home() {
     let rightCount = 0;
     let spaceCount = 0;
 
-    for (const char of text) {
+    // For time mode, only calculate distribution for typed text
+    const textToAnalyze =
+      testMode === "time" ? text.slice(0, userInput.length) : text;
+
+    for (const char of textToAnalyze) {
       const hand = getHandForChar(char);
       if (hand === "left") leftCount++;
       else if (hand === "right") rightCount++;
@@ -428,7 +502,7 @@ export default function Home() {
     [startTime, endTime, charTimestamps, userInput, text, getHandForChar]
   );
 
-  // Calculate overall WPM
+  // Calculate overall WPM (adjusted for time mode)
   const calculateWPM = () => {
     if (!startTime || !endTime) return 0;
     const timeInMinutes = (endTime - startTime) / 60000;
@@ -516,7 +590,7 @@ export default function Home() {
     }
   }, [isFinished, endTime, charTimestamps.length, layout, handleTestComplete]);
 
-  // Update handleInputChange to call handleTestComplete when finished
+  // Update handleInputChange to handle both modes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
@@ -524,10 +598,16 @@ export default function Home() {
     if (!isStarted && value.length === 1) {
       setIsStarted(true);
       setStartTime(Date.now());
+      if (testMode === "time") {
+        setTimeRemaining(TEST_OPTIONS.time[testDuration].value);
+      }
     }
 
+    // For time mode, allow typing even beyond the displayed text
+    const maxLength = testMode === "time" ? text.length : text.length;
+
     // Allow typing up to the text length
-    if (value.length <= text.length) {
+    if (value.length <= maxLength) {
       // Check for consecutive wrong characters before allowing new input
       if (value.length > userInput.length) {
         // Count current consecutive wrong chars before adding the new one
@@ -583,12 +663,11 @@ export default function Home() {
       setUserInput(value);
       setCurrentIndex(value.length);
 
-      // Check if finished
-      if (value.length === text.length) {
+      // Check if finished (words mode only)
+      if (testMode === "words" && value.length === text.length) {
         setIsFinished(true);
         setEndTime(Date.now());
-        setIsLoadingAverage(true); // Start loading immediately
-        // Remove the setTimeout here - now handled by useEffect
+        setIsLoadingAverage(true);
       }
     }
   };
@@ -606,11 +685,12 @@ export default function Home() {
     setCommunityAverage(null);
     setCommunityCount(null);
     setIsLoadingAverage(false);
+    setTimeRemaining(null);
     inputRef.current?.focus();
   };
 
   const newQuote = () => {
-    setText(generateRandomParagraph(3));
+    setText(generateTestText());
     reset();
     // Keep input focused
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -619,6 +699,14 @@ export default function Home() {
   const changeLayout = (newLayout: LayoutType) => {
     setLayout(newLayout);
     // Keep input focused
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const changeTestSettings = (mode: TestMode, duration: TestDuration) => {
+    setTestMode(mode);
+    setTestDuration(duration);
+    setText(generateTestText());
+    reset();
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -774,7 +862,7 @@ export default function Home() {
         </h1>
 
         {/* Layout selector */}
-        <div className="flex gap-2 justify-center mb-8 text-xs">
+        <div className="flex gap-2 justify-center mb-4 text-xs">
           {Object.entries(KEYBOARD_LAYOUTS).map(([key, value]) => (
             <button
               key={key}
@@ -788,6 +876,49 @@ export default function Home() {
               [{value.name}]
             </button>
           ))}
+        </div>
+
+        {/* Test mode and duration selector */}
+        <div className="flex flex-col gap-2 items-center mb-8 text-xs">
+          <div className="flex gap-2">
+            <button
+              onClick={() => changeTestSettings("words", testDuration)}
+              className={`px-3 py-1 border rounded transition-colors ${
+                testMode === "words"
+                  ? "border-white text-black bg-white"
+                  : "border-gray-700 hover:border-white hover:text-white"
+              }`}
+            >
+              [words]
+            </button>
+            <button
+              onClick={() => changeTestSettings("time", testDuration)}
+              className={`px-3 py-1 border rounded transition-colors ${
+                testMode === "time"
+                  ? "border-white text-black bg-white"
+                  : "border-gray-700 hover:border-white hover:text-white"
+              }`}
+            >
+              [time]
+            </button>
+          </div>
+          <div className="flex gap-2">
+            {Object.entries(TEST_OPTIONS[testMode]).map(([key, option]) => (
+              <button
+                key={key}
+                onClick={() =>
+                  changeTestSettings(testMode, key as TestDuration)
+                }
+                className={`px-3 py-1 border rounded transition-colors ${
+                  testDuration === key
+                    ? "border-white text-black bg-white"
+                    : "border-gray-700 hover:border-white hover:text-white"
+                }`}
+              >
+                [{option.label}]
+              </button>
+            ))}
+          </div>
         </div>
 
         {!isFinished ? (
@@ -825,7 +956,17 @@ export default function Home() {
               <div className="flex-1 text-center">
                 {isStarted && !isFinished && (
                   <span className="text-white">
-                    [{Math.floor((Date.now() - startTime!) / 1000)}s]
+                    {testMode === "time" && timeRemaining !== null ? (
+                      <span
+                        className={timeRemaining <= 5 ? "text-red-500" : ""}
+                      >
+                        [{timeRemaining}s remaining]
+                      </span>
+                    ) : (
+                      <span>
+                        [{Math.floor((Date.now() - startTime!) / 1000)}s]
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
@@ -842,6 +983,14 @@ export default function Home() {
                 >
                   [retry]
                 </button>
+                <a
+                  href="https://github.com/ahmedkhaleel2004/leftright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
+                >
+                  [github ⭐ {githubStars ?? "..."}]
+                </a>
               </div>
             </div>
           </>
@@ -850,12 +999,23 @@ export default function Home() {
             <div className="mb-12 p-8 border border-gray-700 bg-black rounded">
               <h2 className="text-xl mb-8 text-white">{`// results`}</h2>
 
+              {/* Test type indicator */}
+              <div className="text-sm text-gray-500 mb-6">
+                {testMode === "words"
+                  ? `${TEST_OPTIONS.words[testDuration].label} test`
+                  : `${TEST_OPTIONS.time[testDuration].label} test`}
+              </div>
+
               {/* Overall stats */}
               <div className="text-4xl font-bold text-green-500 mb-2">
                 {calculateWPM()} wpm
               </div>
               <div className="text-sm text-gray-400 mb-2">
-                completed in {((endTime! - startTime!) / 1000).toFixed(1)}s
+                {testMode === "words"
+                  ? `completed in ${((endTime! - startTime!) / 1000).toFixed(
+                      1
+                    )}s`
+                  : `${userInput.trim().split(" ").length} words typed`}
               </div>
               <div className="text-2xl font-bold text-yellow-500 mb-8">
                 {calculateAccuracy()}% accuracy
@@ -990,6 +1150,14 @@ export default function Home() {
                 >
                   [retry]
                 </button>
+                <a
+                  href="https://github.com/ahmedkhaleel2004/leftright"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
+                >
+                  [github ⭐ {githubStars ?? "..."}]
+                </a>
               </div>
             </div>
           </div>
@@ -999,6 +1167,9 @@ export default function Home() {
           <p>{`// type the text as fast as you can`}</p>
           <p>{`// we will compare your left/right hand speed to the community average`}</p>
           <p>{`// errors allowed - accuracy tracked`}</p>
+          {testMode === "time" && (
+            <p>{`// time mode: type as much as you can before time runs out`}</p>
+          )}
         </div>
       </div>
     </div>
