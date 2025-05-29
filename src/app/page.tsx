@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { generateRandomParagraph } from "./commonWords";
 
 // Keyboard layout definitions
@@ -237,33 +237,9 @@ const KEYBOARD_LAYOUTS = {
 
 type LayoutType = keyof typeof KEYBOARD_LAYOUTS;
 
-const SAMPLE_TEXTS = {
-  mixed: [
-    "we were eager to see the great red deer my mom took my book look up high in july sky",
-    "the quick brown fox jumps over the lazy dog this pangram contains all letters of the alphabet",
-    "practice makes perfect the more you type the faster and more accurate you will become",
-    "technology has revolutionized the way we communicate and work in the modern world",
-    "learning to type efficiently is a valuable skill that can save you time and increase productivity",
-  ],
-  leftHand: [
-    "we were eager to see the great red deer the sweet treats were a great reward after a hard day",
-    "fred ate bread and sweet treats we saw deer and bears at the west gate great feats were rewarded",
-    "ada gave fred tea ted saw red deer we ate sweet bread great bears rested at dusk",
-  ],
-  rightHand: [
-    "only you know how you look my mom took my book look up high in july sky",
-    "in july johnny took my only book you know him look up look out join in",
-    "phil took lily to pool johnny only knew him in july moon hung high up in inky sky",
-  ],
-};
-
-type TestMode = "mixed" | "leftHand" | "rightHand";
-
 export default function Home() {
   const [layout, setLayout] = useState<LayoutType>("qwerty");
-  const [testMode, setTestMode] = useState<TestMode>("mixed");
-  const [text, setText] = useState(SAMPLE_TEXTS.mixed[0]);
-  const [isRandomMode, setIsRandomMode] = useState(false);
+  const [text, setText] = useState("");
   const [userInput, setUserInput] = useState("");
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
@@ -281,15 +257,23 @@ export default function Home() {
   const [isLoadingAverage, setIsLoadingAverage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Generate initial text after mount to avoid hydration mismatch
+  useEffect(() => {
+    setText(generateRandomParagraph(3));
+  }, []);
+
   // Get which hand types a character based on current layout
-  const getHandForChar = (char: string): "left" | "right" | "space" => {
-    const lowerChar = char.toLowerCase();
-    if (char === " ") return "space";
-    const currentLayout = KEYBOARD_LAYOUTS[layout];
-    if (currentLayout.leftHand.has(lowerChar)) return "left";
-    if (currentLayout.rightHand.has(lowerChar)) return "right";
-    return "space"; // Default for unknown characters
-  };
+  const getHandForChar = useCallback(
+    (char: string): "left" | "right" | "space" => {
+      const lowerChar = char.toLowerCase();
+      if (char === " ") return "space";
+      const currentLayout = KEYBOARD_LAYOUTS[layout];
+      if (currentLayout.leftHand.has(lowerChar)) return "left";
+      if (currentLayout.rightHand.has(lowerChar)) return "right";
+      return "space"; // Default for unknown characters
+    },
+    [layout]
+  );
 
   // Calculate text distribution
   const calculateTextDistribution = () => {
@@ -315,41 +299,44 @@ export default function Home() {
   };
 
   // Calculate WPM for specific hand with accurate timing
-  const calculateHandWPM = (hand: "left" | "right") => {
-    if (!startTime || !endTime || charTimestamps.length === 0) return 0;
+  const calculateHandWPM = useCallback(
+    (hand: "left" | "right") => {
+      if (!startTime || !endTime || charTimestamps.length === 0) return 0;
 
-    // Find all characters typed by this hand and their timestamps
-    const handCharIndices: number[] = [];
-    for (let i = 0; i < userInput.length; i++) {
-      const charHand = getHandForChar(text[i]);
-      if (charHand === hand) {
-        handCharIndices.push(i);
+      // Find all characters typed by this hand and their timestamps
+      const handCharIndices: number[] = [];
+      for (let i = 0; i < userInput.length; i++) {
+        const charHand = getHandForChar(text[i]);
+        if (charHand === hand) {
+          handCharIndices.push(i);
+        }
       }
-    }
 
-    if (handCharIndices.length === 0) return 0;
+      if (handCharIndices.length === 0) return 0;
 
-    // Calculate actual typing time for this hand
-    let totalHandTime = 0;
+      // Calculate actual typing time for this hand
+      let totalHandTime = 0;
 
-    for (let i = 0; i < handCharIndices.length; i++) {
-      const charIndex = handCharIndices[i];
-      const currentTimestamp = charTimestamps[charIndex];
+      for (let i = 0; i < handCharIndices.length; i++) {
+        const charIndex = handCharIndices[i];
+        const currentTimestamp = charTimestamps[charIndex];
 
-      // For the first character of this hand, measure from the previous character (or start)
-      const prevTimestamp =
-        charIndex > 0 ? charTimestamps[charIndex - 1] : startTime;
+        // For the first character of this hand, measure from the previous character (or start)
+        const prevTimestamp =
+          charIndex > 0 ? charTimestamps[charIndex - 1] : startTime;
 
-      // Add the time it took to type this character
-      totalHandTime += currentTimestamp - prevTimestamp;
-    }
+        // Add the time it took to type this character
+        totalHandTime += currentTimestamp - prevTimestamp;
+      }
 
-    // Convert to WPM (chars / 5 = words, time in ms to minutes)
-    const words = handCharIndices.length / 5;
-    const minutes = totalHandTime / 60000;
+      // Convert to WPM (chars / 5 = words, time in ms to minutes)
+      const words = handCharIndices.length / 5;
+      const minutes = totalHandTime / 60000;
 
-    return minutes > 0 ? Math.round(words / minutes) : 0;
-  };
+      return minutes > 0 ? Math.round(words / minutes) : 0;
+    },
+    [startTime, endTime, charTimestamps, userInput, text, getHandForChar]
+  );
 
   // Calculate overall WPM
   const calculateWPM = () => {
@@ -360,13 +347,8 @@ export default function Home() {
   };
 
   // Fetch and post community average
-  const handleTestComplete = async () => {
-    console.log("handleTestComplete called, testMode:", testMode);
-
-    if (testMode !== "mixed") {
-      console.log("Not in mixed mode, skipping community tracking");
-      return; // Only track for mixed mode
-    }
+  const handleTestComplete = useCallback(async () => {
+    console.log("handleTestComplete called");
 
     const leftWPM = calculateHandWPM("left");
     const rightWPM = calculateHandWPM("right");
@@ -430,16 +412,11 @@ export default function Home() {
     } finally {
       setIsLoadingAverage(false);
     }
-  };
+  }, [layout, calculateHandWPM]);
 
   // Handle test completion when all data is ready
   useEffect(() => {
-    if (
-      isFinished &&
-      endTime &&
-      charTimestamps.length > 0 &&
-      testMode === "mixed"
-    ) {
+    if (isFinished && endTime && charTimestamps.length > 0) {
       // Small delay to ensure all state updates are complete
       const timer = setTimeout(() => {
         handleTestComplete();
@@ -447,7 +424,7 @@ export default function Home() {
 
       return () => clearTimeout(timer);
     }
-  }, [isFinished, endTime, charTimestamps.length, testMode, layout]);
+  }, [isFinished, endTime, charTimestamps.length, layout, handleTestComplete]);
 
   // Update handleInputChange to call handleTestComplete when finished
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,6 +469,7 @@ export default function Home() {
       if (value.length === text.length) {
         setIsFinished(true);
         setEndTime(Date.now());
+        setIsLoadingAverage(true); // Start loading immediately
         // Remove the setTimeout here - now handled by useEffect
       }
     }
@@ -509,44 +487,15 @@ export default function Home() {
     setCharTimestamps([]);
     setCommunityAverage(null);
     setCommunityCount(null);
+    setIsLoadingAverage(false);
     inputRef.current?.focus();
   };
 
-  const selectNewText = () => {
-    if (testMode === "mixed" && isRandomMode) {
-      setText(generateRandomParagraph(3));
-    } else {
-      const texts = SAMPLE_TEXTS[testMode];
-      const randomIndex = Math.floor(Math.random() * texts.length);
-      setText(texts[randomIndex]);
-    }
+  const newQuote = () => {
+    setText(generateRandomParagraph(3));
     reset();
     // Keep input focused
     setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const changeMode = (mode: TestMode) => {
-    setTestMode(mode);
-    setIsRandomMode(false);
-    const texts = SAMPLE_TEXTS[mode];
-    setText(texts[0]);
-    reset();
-    // Keep input focused
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const toggleRandomMode = () => {
-    if (testMode === "mixed") {
-      setIsRandomMode(!isRandomMode);
-      if (!isRandomMode) {
-        setText(generateRandomParagraph(3));
-      } else {
-        setText(SAMPLE_TEXTS.mixed[0]);
-      }
-      reset();
-      // Keep input focused
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
   };
 
   const changeLayout = (newLayout: LayoutType) => {
@@ -601,6 +550,22 @@ export default function Home() {
   };
 
   const distribution = calculateTextDistribution();
+
+  // Don't render main content until text is loaded
+  if (!text) {
+    return (
+      <div className="min-h-screen bg-black text-white p-8 font-mono flex items-center justify-center">
+        <div className="w-full max-w-2xl">
+          <h1 className="text-2xl mb-8 text-center text-white">
+            How fast is your left / right hand?
+          </h1>
+          <div className="text-center text-gray-500">
+            <span className="animate-pulse">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate hand balance feedback
   const calculateHandBalance = () => {
@@ -691,7 +656,7 @@ export default function Home() {
         </h1>
 
         {/* Layout selector */}
-        <div className="flex gap-2 justify-center mb-4 text-xs">
+        <div className="flex gap-2 justify-center mb-8 text-xs">
           {Object.entries(KEYBOARD_LAYOUTS).map(([key, value]) => (
             <button
               key={key}
@@ -706,56 +671,6 @@ export default function Home() {
             </button>
           ))}
         </div>
-
-        {/* Mode selector */}
-        <div className="flex gap-2 justify-center mb-4 text-sm">
-          <button
-            onClick={() => changeMode("mixed")}
-            className={`px-4 py-2 border rounded transition-colors ${
-              testMode === "mixed"
-                ? "border-white text-black bg-white"
-                : "border-gray-700 hover:border-white hover:text-white"
-            }`}
-          >
-            [all]
-          </button>
-          <button
-            onClick={() => changeMode("leftHand")}
-            className={`px-4 py-2 border rounded transition-colors ${
-              testMode === "leftHand"
-                ? "border-blue-500 text-black bg-blue-500"
-                : "border-gray-700 hover:border-blue-500 hover:text-blue-500"
-            }`}
-          >
-            [left_hand]
-          </button>
-          <button
-            onClick={() => changeMode("rightHand")}
-            className={`px-4 py-2 border rounded transition-colors ${
-              testMode === "rightHand"
-                ? "border-purple-500 text-black bg-purple-500"
-                : "border-gray-700 hover:border-purple-500 hover:text-purple-500"
-            }`}
-          >
-            [right_hand]
-          </button>
-        </div>
-
-        {/* Random mode toggle for mixed mode */}
-        {testMode === "mixed" && (
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={toggleRandomMode}
-              className={`px-4 py-2 border rounded transition-colors text-sm ${
-                isRandomMode
-                  ? "border-green-500 text-black bg-green-500"
-                  : "border-gray-700 hover:border-green-500 hover:text-green-500"
-              }`}
-            >
-              [random]
-            </button>
-          </div>
-        )}
 
         {!isFinished ? (
           <>
@@ -774,9 +689,6 @@ export default function Home() {
                 <span className="text-purple-400">
                   {distribution.rightPercent}% right
                 </span>
-                {isRandomMode && (
-                  <span className="text-green-400"> | random mode</span>
-                )}
               </div>
 
               <input
@@ -799,12 +711,20 @@ export default function Home() {
                   </span>
                 )}
               </div>
-              <button
-                onClick={reset}
-                className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
-              >
-                [reset]
-              </button>
+              <div className="flex gap-4">
+                <button
+                  onClick={newQuote}
+                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
+                >
+                  [new]
+                </button>
+                <button
+                  onClick={reset}
+                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
+                >
+                  [retry]
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -860,93 +780,97 @@ export default function Home() {
                 </div>
 
                 {/* Hand balance analysis */}
-                {testMode === "mixed" && (
-                  <div className="mt-6 pt-4 border-t border-gray-800">
-                    {(() => {
-                      const balance = calculateHandBalance();
+                <div className="mt-6 pt-4 border-t border-gray-800">
+                  {isLoadingAverage ? (
+                    <div className="text-center py-4">
+                      <div className="text-sm text-gray-500 animate-pulse">
+                        Calculating community comparison...
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {(() => {
+                        const balance = calculateHandBalance();
 
-                      return (
-                        <>
-                          {/* Direct comparison statement */}
-                          <div
-                            className={`text-lg font-bold mb-2 ${balance.statementClass}`}
-                          >
-                            {balance.statement}
-                          </div>
+                        return (
+                          <>
+                            {/* Direct comparison statement */}
+                            <div
+                              className={`text-lg font-bold mb-2 ${balance.statementClass}`}
+                            >
+                              {balance.statement}
+                            </div>
 
-                          {/* Details */}
-                          <div className="text-sm text-gray-500 mb-4">
-                            {balance.details}
-                          </div>
+                            {/* Details */}
+                            <div className="text-sm text-gray-500 mb-4">
+                              {balance.details}
+                            </div>
 
-                          {/* Visual speed comparison */}
-                          <div className="grid grid-cols-2 gap-4 text-center mb-4">
-                            <div>
-                              <div className="text-xs text-gray-600 mb-1">
-                                your ratio
+                            {/* Visual speed comparison */}
+                            <div className="grid grid-cols-2 gap-4 text-center mb-4">
+                              <div>
+                                <div className="text-xs text-gray-600 mb-1">
+                                  your ratio
+                                </div>
+                                <div className="text-sm">
+                                  L:{" "}
+                                  <span className="text-blue-400">
+                                    {calculateHandWPM("left")}
+                                  </span>{" "}
+                                  / R:{" "}
+                                  <span className="text-purple-400">
+                                    {calculateHandWPM("right")}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="text-sm">
-                                L:{" "}
-                                <span className="text-blue-400">
-                                  {calculateHandWPM("left")}
-                                </span>{" "}
-                                / R:{" "}
-                                <span className="text-purple-400">
-                                  {calculateHandWPM("right")}
-                                </span>
+                              <div>
+                                <div className="text-xs text-gray-600 mb-1">
+                                  {communityAverage
+                                    ? "community avg"
+                                    : "typical ratio"}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {communityAverage
+                                    ? `right hand ~${Math.round(
+                                        (communityAverage - 1) * 100
+                                      )}% ${
+                                        communityAverage > 1
+                                          ? "faster"
+                                          : "slower"
+                                      }`
+                                    : "right hand ~5% faster"}
+                                </div>
                               </div>
                             </div>
-                            <div>
-                              <div className="text-xs text-gray-600 mb-1">
-                                {isLoadingAverage
-                                  ? "loading..."
-                                  : communityAverage
-                                  ? "community avg"
-                                  : "typical ratio"}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {isLoadingAverage ? (
-                                  <span className="animate-pulse">...</span>
-                                ) : communityAverage ? (
-                                  `right hand ~${Math.round(
-                                    (communityAverage - 1) * 100
-                                  )}% ${
-                                    communityAverage > 1 ? "faster" : "slower"
-                                  }`
-                                ) : (
-                                  "right hand ~5% faster"
-                                )}
-                              </div>
-                            </div>
-                          </div>
 
-                          {/* Community stats */}
-                          {communityCount && communityCount > 0 && (
-                            <div className="text-xs text-gray-600 text-center mt-2">
-                              based on {communityCount}{" "}
-                              {communityCount === 1 ? "person" : "people"} using{" "}
-                              {KEYBOARD_LAYOUTS[layout].name}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                )}
+                            {/* Community stats */}
+                            {communityCount && communityCount > 0 && (
+                              <div className="text-xs text-gray-600 text-center mt-2">
+                                based on {communityCount}{" "}
+                                {communityCount === 1 ? "person" : "people"}{" "}
+                                using {KEYBOARD_LAYOUTS[layout].name}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-4 justify-center text-sm mt-8">
+                <button
+                  onClick={newQuote}
+                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
+                >
+                  [new_text]
+                </button>
                 <button
                   onClick={reset}
                   className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
                 >
                   [retry]
-                </button>
-                <button
-                  onClick={selectNewText}
-                  className="px-4 py-2 border border-gray-700 hover:border-white hover:text-white transition-colors rounded"
-                >
-                  [new_text]
                 </button>
               </div>
             </div>
@@ -956,9 +880,6 @@ export default function Home() {
         <div className="text-center text-gray-500 text-xs mt-16 space-y-1">
           <p>{`// type the text as fast as you can`}</p>
           <p>{`// errors allowed - accuracy tracked`}</p>
-          {testMode === "mixed" && (
-            <p>{`// toggle [random] for generated text`}</p>
-          )}
         </div>
       </div>
     </div>

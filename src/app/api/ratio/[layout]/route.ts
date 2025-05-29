@@ -5,10 +5,10 @@ const redis = Redis.fromEnv();
 
 export async function GET(
   request: Request,
-  { params }: { params: { layout: string } }
+  { params }: { params: Promise<{ layout: string }> }
 ) {
   try {
-    const { layout } = params;
+    const { layout } = await params;
 
     // Get the stored data for this layout
     const data = (await redis.get(`ratio:${layout}`)) as {
@@ -42,10 +42,10 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { layout: string } }
+  { params }: { params: Promise<{ layout: string }> }
 ) {
   try {
-    const { layout } = params;
+    const { layout } = await params;
     console.log("POST /api/ratio/[layout] - Layout:", layout);
 
     const body = await request.json();

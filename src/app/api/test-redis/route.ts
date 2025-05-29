@@ -17,11 +17,13 @@ export async function GET() {
       testValue: value,
       message: "Redis connection successful!",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to connect to Redis";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to connect to Redis",
+        message: errorMessage,
         hint: "Make sure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set in .env.local",
       },
       { status: 500 }
