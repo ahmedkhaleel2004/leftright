@@ -276,6 +276,9 @@ export default function Home() {
     total: 0,
   });
   const [charTimestamps, setCharTimestamps] = useState<number[]>([]);
+  const [communityAverage, setCommunityAverage] = useState<number | null>(null);
+  const [communityCount, setCommunityCount] = useState<number | null>(null);
+  const [isLoadingAverage, setIsLoadingAverage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Get which hand types a character based on current layout
@@ -356,6 +359,97 @@ export default function Home() {
     return Math.round(wordsTyped / timeInMinutes);
   };
 
+  // Fetch and post community average
+  const handleTestComplete = async () => {
+    console.log("handleTestComplete called, testMode:", testMode);
+
+    if (testMode !== "mixed") {
+      console.log("Not in mixed mode, skipping community tracking");
+      return; // Only track for mixed mode
+    }
+
+    const leftWPM = calculateHandWPM("left");
+    const rightWPM = calculateHandWPM("right");
+
+    console.log("Left WPM:", leftWPM, "Right WPM:", rightWPM);
+
+    if (leftWPM === 0 || rightWPM === 0) {
+      console.log("One hand has 0 WPM, skipping");
+      return;
+    }
+
+    const userRatio = rightWPM / leftWPM;
+    console.log("User ratio:", userRatio, "Layout:", layout);
+
+    try {
+      setIsLoadingAverage(true);
+
+      // Post user's ratio
+      console.log(
+        "Posting to:",
+        `/api/ratio/${layout}`,
+        "with ratio:",
+        userRatio
+      );
+      const postResponse = await fetch(`/api/ratio/${layout}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ratio: userRatio }),
+      });
+
+      console.log("Post response status:", postResponse.status);
+
+      if (postResponse.ok) {
+        const data = await postResponse.json();
+        console.log("Post response data:", data);
+        setCommunityAverage(data.average);
+        setCommunityCount(data.count);
+      } else {
+        console.log("Post failed, trying GET");
+        // If post fails, still try to get the average
+        const getResponse = await fetch(`/api/ratio/${layout}`);
+        if (getResponse.ok) {
+          const data = await getResponse.json();
+          setCommunityAverage(data.average);
+          setCommunityCount(data.count);
+        }
+      }
+    } catch (error) {
+      console.error("Error handling community average:", error);
+      // Try to at least fetch the average
+      try {
+        const response = await fetch(`/api/ratio/${layout}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCommunityAverage(data.average);
+          setCommunityCount(data.count);
+        }
+      } catch (fetchError) {
+        console.error("Error fetching average:", fetchError);
+      }
+    } finally {
+      setIsLoadingAverage(false);
+    }
+  };
+
+  // Handle test completion when all data is ready
+  useEffect(() => {
+    if (
+      isFinished &&
+      endTime &&
+      charTimestamps.length > 0 &&
+      testMode === "mixed"
+    ) {
+      // Small delay to ensure all state updates are complete
+      const timer = setTimeout(() => {
+        handleTestComplete();
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isFinished, endTime, charTimestamps.length, testMode, layout]);
+
+  // Update handleInputChange to call handleTestComplete when finished
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
@@ -398,6 +492,7 @@ export default function Home() {
       if (value.length === text.length) {
         setIsFinished(true);
         setEndTime(Date.now());
+        // Remove the setTimeout here - now handled by useEffect
       }
     }
   };
@@ -412,6 +507,8 @@ export default function Home() {
     setLeftHandStats({ correct: 0, total: 0 });
     setRightHandStats({ correct: 0, total: 0 });
     setCharTimestamps([]);
+    setCommunityAverage(null);
+    setCommunityCount(null);
     inputRef.current?.focus();
   };
 
@@ -507,9 +604,6 @@ export default function Home() {
 
   // Calculate hand balance feedback
   const calculateHandBalance = () => {
-    // Research shows right hand is typically ~5% faster than left hand for right-handed typists
-    const AVERAGE_SPEED_RATIO = 1.05; // Right hand / Left hand speed ratio for average person
-
     const leftWPM = calculateHandWPM("left");
     const rightWPM = calculateHandWPM("right");
 
@@ -519,11 +613,15 @@ export default function Home() {
         statement: "Not enough data to compare hand speeds.",
         statementClass: "text-gray-400",
         details: "",
+        userRatio: 0,
       };
     }
 
     // Calculate user's speed ratio
     const userRatio = rightWPM / leftWPM;
+
+    // Use community average if available, otherwise fall back to research average
+    const AVERAGE_SPEED_RATIO = communityAverage || 1.05;
     const percentOfAverage = (userRatio / AVERAGE_SPEED_RATIO) * 100;
 
     let statement = "";
@@ -536,30 +634,34 @@ export default function Home() {
       statementClass = "text-gray-300";
       details = `Your right hand is ${(userRatio * 100).toFixed(
         0
-      )}% as fast as your left (average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(
-        0
-      )}%)`;
+      )}% as fast as your left (${
+        communityAverage ? "community" : "research"
+      } average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(0)}%)`;
     } else if (userRatio > AVERAGE_SPEED_RATIO) {
       // Right hand is disproportionately faster
-      statement = `Your right hand is disproportionately faster than average.`;
+      statement = `Your right hand is disproportionately faster than ${
+        communityAverage ? "the community" : "average"
+      }.`;
       statementClass = "text-purple-400";
       details = `Your right hand is ${(userRatio * 100).toFixed(
         0
-      )}% as fast as your left (average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(
-        0
-      )}%)`;
+      )}% as fast as your left (${
+        communityAverage ? "community" : "research"
+      } average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(0)}%)`;
     } else {
       // Left hand is disproportionately faster
-      statement = `Your left hand is disproportionately faster than average.`;
+      statement = `Your left hand is disproportionately faster than ${
+        communityAverage ? "the community" : "average"
+      }.`;
       statementClass = "text-blue-400";
       details = `Your right hand is only ${(userRatio * 100).toFixed(
         0
-      )}% as fast as your left (average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(
-        0
-      )}%)`;
+      )}% as fast as your left (${
+        communityAverage ? "community" : "research"
+      } average: ${(AVERAGE_SPEED_RATIO * 100).toFixed(0)}%)`;
     }
 
-    return { statement, statementClass, details };
+    return { statement, statementClass, details, userRatio };
   };
 
   // Calculate accuracy
@@ -585,7 +687,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white p-8 font-mono flex items-center justify-center">
       <div className="w-full max-w-2xl">
         <h1 className="text-2xl mb-8 text-center text-white">
-          typing_test.exe
+          How fast is your left / right hand?
         </h1>
 
         {/* Layout selector */}
@@ -796,13 +898,36 @@ export default function Home() {
                             </div>
                             <div>
                               <div className="text-xs text-gray-600 mb-1">
-                                typical ratio
+                                {isLoadingAverage
+                                  ? "loading..."
+                                  : communityAverage
+                                  ? "community avg"
+                                  : "typical ratio"}
                               </div>
                               <div className="text-sm text-gray-500">
-                                right hand ~5% faster
+                                {isLoadingAverage ? (
+                                  <span className="animate-pulse">...</span>
+                                ) : communityAverage ? (
+                                  `right hand ~${Math.round(
+                                    (communityAverage - 1) * 100
+                                  )}% ${
+                                    communityAverage > 1 ? "faster" : "slower"
+                                  }`
+                                ) : (
+                                  "right hand ~5% faster"
+                                )}
                               </div>
                             </div>
                           </div>
+
+                          {/* Community stats */}
+                          {communityCount && communityCount > 0 && (
+                            <div className="text-xs text-gray-600 text-center mt-2">
+                              based on {communityCount}{" "}
+                              {communityCount === 1 ? "person" : "people"} using{" "}
+                              {KEYBOARD_LAYOUTS[layout].name}
+                            </div>
+                          )}
                         </>
                       );
                     })()}
