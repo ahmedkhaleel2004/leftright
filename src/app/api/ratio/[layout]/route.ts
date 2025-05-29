@@ -46,45 +46,41 @@ export async function POST(
 ) {
   try {
     const { layout } = await params;
-    console.log("POST /api/ratio/[layout] - Layout:", layout);
 
     const body = await request.json();
-    console.log("Request body:", body);
 
     const { ratio } = body;
 
-    // Validate ratio
-    if (typeof ratio !== "number" || ratio <= 0 || ratio > 10) {
-      console.log("Invalid ratio:", ratio);
+    // Validate ratio - reject absurd values
+    // Normal range: one hand shouldn't be more than 3x faster than the other
+    // or less than 30% as fast
+    if (
+      typeof ratio !== "number" ||
+      !isFinite(ratio) ||
+      ratio < 0.3 ||
+      ratio > 3.0
+    ) {
       return NextResponse.json(
-        { error: "Invalid ratio value" },
+        {
+          error: "Invalid ratio value",
+          message: "Ratio must be between 0.3 and 3.0",
+          receivedRatio: ratio,
+        },
         { status: 400 }
       );
     }
 
     // Get current data
-    console.log("Fetching current data for key:", `ratio:${layout}`);
     const current = ((await redis.get(`ratio:${layout}`)) as {
       count: number;
       sum: number;
       average: number;
     } | null) || { count: 0, sum: 0, average: 1.05 };
 
-    console.log("Current data:", current);
-
     // Calculate new average
     const newCount = current.count + 1;
     const newSum = current.sum + ratio;
     const newAverage = newSum / newCount;
-
-    console.log(
-      "New values - Count:",
-      newCount,
-      "Sum:",
-      newSum,
-      "Average:",
-      newAverage
-    );
 
     // Store updated data
     await redis.set(`ratio:${layout}`, {
@@ -92,8 +88,6 @@ export async function POST(
       sum: newSum,
       average: newAverage,
     });
-
-    console.log("Data stored successfully");
 
     return NextResponse.json({
       count: newCount,

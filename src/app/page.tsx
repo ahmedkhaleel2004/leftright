@@ -531,13 +531,6 @@ export default function Home() {
     try {
       setIsLoadingAverage(true);
 
-      // Post user's ratio
-      console.log(
-        "Posting to:",
-        `/api/ratio/${layout}`,
-        "with ratio:",
-        userRatio
-      );
       const postResponse = await fetch(`/api/ratio/${layout}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
