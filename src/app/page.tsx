@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { generateRandomParagraph } from "./commonWords";
 
 // Keyboard layout definitions
@@ -486,10 +486,6 @@ export default function Home() {
       )}%)`;
     } else if (userRatio > AVERAGE_SPEED_RATIO) {
       // Right hand is disproportionately faster
-      const howMuchFaster = (
-        (userRatio / AVERAGE_SPEED_RATIO - 1) *
-        100
-      ).toFixed(0);
       statement = `Your right hand is disproportionately faster than average.`;
       statementClass = "text-purple-400";
       details = `Your right hand is ${(userRatio * 100).toFixed(
@@ -499,10 +495,6 @@ export default function Home() {
       )}%)`;
     } else {
       // Left hand is disproportionately faster
-      const howMuchSlower = (
-        (1 - userRatio / AVERAGE_SPEED_RATIO) *
-        100
-      ).toFixed(0);
       statement = `Your left hand is disproportionately faster than average.`;
       statementClass = "text-blue-400";
       details = `Your right hand is only ${(userRatio * 100).toFixed(
@@ -642,7 +634,7 @@ export default function Home() {
         ) : (
           <div className="text-center">
             <div className="mb-12 p-8 border border-gray-700 bg-black rounded">
-              <h2 className="text-xl mb-8 text-white">// results</h2>
+              <h2 className="text-xl mb-8 text-white">{`// results`}</h2>
 
               {/* Overall stats */}
               <div className="text-4xl font-bold text-green-500 mb-2">
@@ -655,7 +647,7 @@ export default function Home() {
               {/* Hand-specific stats */}
               <div className="border-t border-gray-800 pt-6 mt-6">
                 <h3 className="text-sm text-gray-400 mb-4">
-                  // hand performance [{KEYBOARD_LAYOUTS[layout].name}]
+                  {`// hand performance [${KEYBOARD_LAYOUTS[layout].name}]`}
                 </h3>
                 <div className="grid grid-cols-2 gap-8 max-w-sm mx-auto">
                   <div>
@@ -754,9 +746,11 @@ export default function Home() {
         )}
 
         <div className="text-center text-gray-500 text-xs mt-16 space-y-1">
-          <p>// type the text as fast as you can</p>
-          <p>// only correct characters allowed</p>
-          {testMode === "mixed" && <p>// toggle [random] for generated text</p>}
+          <p>{`// type the text as fast as you can`}</p>
+          <p>{`// only correct characters allowed`}</p>
+          {testMode === "mixed" && (
+            <p>{`// toggle [random] for generated text`}</p>
+          )}
         </div>
       </div>
     </div>
