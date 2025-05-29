@@ -626,15 +626,12 @@ export function generateRandomSentence(): string {
         word = getRandomWord("nouns");
     }
 
-    // Capitalize first word
-    if (index === 0) {
-      word = word.charAt(0).toUpperCase() + word.slice(1);
-    }
-
+    // Keep everything lowercase
     words.push(word);
   });
 
-  return words.join(" ") + ".";
+  // Return without punctuation
+  return words.join(" ");
 }
 
 // Generate a random paragraph with multiple sentences
@@ -643,5 +640,6 @@ export function generateRandomParagraph(sentenceCount: number = 3): string {
   for (let i = 0; i < sentenceCount; i++) {
     sentences.push(generateRandomSentence());
   }
+  // Join with spaces, no periods
   return sentences.join(" ");
 }

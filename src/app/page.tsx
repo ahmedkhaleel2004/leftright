@@ -239,20 +239,21 @@ type LayoutType = keyof typeof KEYBOARD_LAYOUTS;
 
 const SAMPLE_TEXTS = {
   mixed: [
-    "The quick brown fox jumps over the lazy dog. This pangram contains all letters of the alphabet.",
-    "Practice makes perfect. The more you type, the faster and more accurate you will become.",
-    "Technology has revolutionized the way we communicate and work in the modern world.",
-    "Learning to type efficiently is a valuable skill that can save you time and increase productivity.",
+    "we were eager to see the great red deer my mom took my book look up high in july sky",
+    "the quick brown fox jumps over the lazy dog this pangram contains all letters of the alphabet",
+    "practice makes perfect the more you type the faster and more accurate you will become",
+    "technology has revolutionized the way we communicate and work in the modern world",
+    "learning to type efficiently is a valuable skill that can save you time and increase productivity",
   ],
   leftHand: [
-    "We were eager to see the great red deer. The sweet treats were a great reward after a hard day.",
-    "Fred ate bread and sweet treats. We saw deer and bears at the west gate. Great feats were rewarded.",
-    "Ada gave Fred tea. Ted saw red deer. We ate sweet bread. Great bears rested at dusk.",
+    "we were eager to see the great red deer the sweet treats were a great reward after a hard day",
+    "fred ate bread and sweet treats we saw deer and bears at the west gate great feats were rewarded",
+    "ada gave fred tea ted saw red deer we ate sweet bread great bears rested at dusk",
   ],
   rightHand: [
-    "Only you know how you look. My mom took my book. Look up high in July sky.",
-    "In July, Johnny took my only book. You know him. Look up, look out, join in.",
-    "Phil took lily to pool. Johnny only knew him in July. Moon hung high up in inky sky.",
+    "only you know how you look my mom took my book look up high in july sky",
+    "in july johnny took my only book you know him look up look out join in",
+    "phil took lily to pool johnny only knew him in july moon hung high up in inky sky",
   ],
 };
 
@@ -274,6 +275,7 @@ export default function Home() {
     correct: 0,
     total: 0,
   });
+  const [charTimestamps, setCharTimestamps] = useState<number[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Get which hand types a character based on current layout
@@ -309,14 +311,41 @@ export default function Home() {
     };
   };
 
-  // Calculate WPM for specific hand
+  // Calculate WPM for specific hand with accurate timing
   const calculateHandWPM = (hand: "left" | "right") => {
-    if (!startTime || !endTime) return 0;
-    const timeInMinutes = (endTime - startTime) / 60000;
-    const stats = hand === "left" ? leftHandStats : rightHandStats;
-    // Approximate words by dividing characters by 5
-    const words = stats.total / 5;
-    return Math.round(words / timeInMinutes);
+    if (!startTime || !endTime || charTimestamps.length === 0) return 0;
+
+    // Find all characters typed by this hand and their timestamps
+    let handCharIndices: number[] = [];
+    for (let i = 0; i < userInput.length; i++) {
+      const charHand = getHandForChar(text[i]);
+      if (charHand === hand) {
+        handCharIndices.push(i);
+      }
+    }
+
+    if (handCharIndices.length === 0) return 0;
+
+    // Calculate actual typing time for this hand
+    let totalHandTime = 0;
+
+    for (let i = 0; i < handCharIndices.length; i++) {
+      const charIndex = handCharIndices[i];
+      const currentTimestamp = charTimestamps[charIndex];
+
+      // For the first character of this hand, measure from the previous character (or start)
+      const prevTimestamp =
+        charIndex > 0 ? charTimestamps[charIndex - 1] : startTime;
+
+      // Add the time it took to type this character
+      totalHandTime += currentTimestamp - prevTimestamp;
+    }
+
+    // Convert to WPM (chars / 5 = words, time in ms to minutes)
+    const words = handCharIndices.length / 5;
+    const minutes = totalHandTime / 60000;
+
+    return minutes > 0 ? Math.round(words / minutes) : 0;
   };
 
   // Calculate overall WPM
@@ -330,49 +359,46 @@ export default function Home() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
-    // Only allow correct characters
-    if (value.length > userInput.length) {
-      const newChar = value[value.length - 1];
-      const expectedChar = text[userInput.length];
-
-      // If character is incorrect, don't update
-      if (newChar !== expectedChar) {
-        return;
-      }
-    }
-
     // Start timer on first character
     if (!isStarted && value.length === 1) {
       setIsStarted(true);
       setStartTime(Date.now());
     }
 
-    // Track hand statistics for new character
-    if (value.length > userInput.length && value.length <= text.length) {
-      const newCharIndex = value.length - 1;
-      const targetChar = text[newCharIndex];
-      const hand = getHandForChar(targetChar);
+    // Allow typing up to the text length
+    if (value.length <= text.length) {
+      // Track hand statistics and timestamp for new character
+      if (value.length > userInput.length) {
+        const newCharIndex = value.length - 1;
+        const targetChar = text[newCharIndex];
+        const typedChar = value[newCharIndex];
+        const hand = getHandForChar(targetChar);
 
-      if (hand === "left") {
-        setLeftHandStats((prev) => ({
-          correct: prev.correct + 1,
-          total: prev.total + 1,
-        }));
-      } else if (hand === "right") {
-        setRightHandStats((prev) => ({
-          correct: prev.correct + 1,
-          total: prev.total + 1,
-        }));
+        // Record timestamp for this character
+        const newTimestamp = Date.now();
+        setCharTimestamps((prev) => [...prev, newTimestamp]);
+
+        if (hand === "left") {
+          setLeftHandStats((prev) => ({
+            correct: prev.correct + (typedChar === targetChar ? 1 : 0),
+            total: prev.total + 1,
+          }));
+        } else if (hand === "right") {
+          setRightHandStats((prev) => ({
+            correct: prev.correct + (typedChar === targetChar ? 1 : 0),
+            total: prev.total + 1,
+          }));
+        }
       }
-    }
 
-    setUserInput(value);
-    setCurrentIndex(value.length);
+      setUserInput(value);
+      setCurrentIndex(value.length);
 
-    // Check if finished
-    if (value.length === text.length) {
-      setIsFinished(true);
-      setEndTime(Date.now());
+      // Check if finished
+      if (value.length === text.length) {
+        setIsFinished(true);
+        setEndTime(Date.now());
+      }
     }
   };
 
@@ -385,6 +411,7 @@ export default function Home() {
     setCurrentIndex(0);
     setLeftHandStats({ correct: 0, total: 0 });
     setRightHandStats({ correct: 0, total: 0 });
+    setCharTimestamps([]);
     inputRef.current?.focus();
   };
 
@@ -397,6 +424,8 @@ export default function Home() {
       setText(texts[randomIndex]);
     }
     reset();
+    // Keep input focused
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const changeMode = (mode: TestMode) => {
@@ -405,6 +434,8 @@ export default function Home() {
     const texts = SAMPLE_TEXTS[mode];
     setText(texts[0]);
     reset();
+    // Keep input focused
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const toggleRandomMode = () => {
@@ -416,11 +447,32 @@ export default function Home() {
         setText(SAMPLE_TEXTS.mixed[0]);
       }
       reset();
+      // Keep input focused
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
+  };
+
+  const changeLayout = (newLayout: LayoutType) => {
+    setLayout(newLayout);
+    // Keep input focused
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  // Keep input focused when clicking anywhere
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      // Don't refocus if clicking inside the input
+      if (e.target !== inputRef.current) {
+        setTimeout(() => inputRef.current?.focus(), 0);
+      }
+    };
+
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, []);
 
   const renderText = () => {
@@ -435,7 +487,10 @@ export default function Home() {
       }
 
       if (index < userInput.length) {
-        className = "text-green-500";
+        className =
+          userInput[index] === char
+            ? "text-green-500"
+            : "text-red-500 bg-red-900/50";
       } else if (index === currentIndex) {
         className = "bg-white text-black";
       }
@@ -507,6 +562,25 @@ export default function Home() {
     return { statement, statementClass, details };
   };
 
+  // Calculate accuracy
+  const calculateAccuracy = () => {
+    if (userInput.length === 0) return 100;
+    let correctChars = 0;
+    for (let i = 0; i < userInput.length; i++) {
+      if (userInput[i] === text[i]) {
+        correctChars++;
+      }
+    }
+    return Math.round((correctChars / userInput.length) * 100);
+  };
+
+  // Calculate hand-specific accuracy
+  const calculateHandAccuracy = (hand: "left" | "right") => {
+    const stats = hand === "left" ? leftHandStats : rightHandStats;
+    if (stats.total === 0) return 100;
+    return Math.round((stats.correct / stats.total) * 100);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white p-8 font-mono flex items-center justify-center">
       <div className="w-full max-w-2xl">
@@ -519,7 +593,7 @@ export default function Home() {
           {Object.entries(KEYBOARD_LAYOUTS).map(([key, value]) => (
             <button
               key={key}
-              onClick={() => setLayout(key as LayoutType)}
+              onClick={() => changeLayout(key as LayoutType)}
               className={`px-3 py-1 border rounded transition-colors ${
                 layout === key
                   ? "border-white text-black bg-white"
@@ -640,8 +714,11 @@ export default function Home() {
               <div className="text-4xl font-bold text-green-500 mb-2">
                 {calculateWPM()} wpm
               </div>
-              <div className="text-sm text-gray-400 mb-8">
+              <div className="text-sm text-gray-400 mb-2">
                 completed in {((endTime! - startTime!) / 1000).toFixed(1)}s
+              </div>
+              <div className="text-2xl font-bold text-yellow-500 mb-8">
+                {calculateAccuracy()}% accuracy
               </div>
 
               {/* Hand-specific stats */}
@@ -658,6 +735,9 @@ export default function Home() {
                     <div className="text-sm text-gray-500">
                       {leftHandStats.total} chars ({distribution.leftPercent}%)
                     </div>
+                    <div className="text-sm text-gray-600">
+                      {calculateHandAccuracy("left")}% accuracy
+                    </div>
                   </div>
 
                   <div>
@@ -670,6 +750,9 @@ export default function Home() {
                     <div className="text-sm text-gray-500">
                       {rightHandStats.total} chars ({distribution.rightPercent}
                       %)
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {calculateHandAccuracy("right")}% accuracy
                     </div>
                   </div>
                 </div>
@@ -747,7 +830,7 @@ export default function Home() {
 
         <div className="text-center text-gray-500 text-xs mt-16 space-y-1">
           <p>{`// type the text as fast as you can`}</p>
-          <p>{`// only correct characters allowed`}</p>
+          <p>{`// errors allowed - accuracy tracked`}</p>
           {testMode === "mixed" && (
             <p>{`// toggle [random] for generated text`}</p>
           )}
