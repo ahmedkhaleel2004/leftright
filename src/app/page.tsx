@@ -513,20 +513,14 @@ export default function Home() {
 
   // Fetch and post community average
   const handleTestComplete = useCallback(async () => {
-    console.log("handleTestComplete called");
-
     const leftWPM = calculateHandWPM("left");
     const rightWPM = calculateHandWPM("right");
 
-    console.log("Left WPM:", leftWPM, "Right WPM:", rightWPM);
-
     if (leftWPM === 0 || rightWPM === 0) {
-      console.log("One hand has 0 WPM, skipping");
       return;
     }
 
     const userRatio = rightWPM / leftWPM;
-    console.log("User ratio:", userRatio, "Layout:", layout);
 
     try {
       setIsLoadingAverage(true);
@@ -537,15 +531,11 @@ export default function Home() {
         body: JSON.stringify({ ratio: userRatio }),
       });
 
-      console.log("Post response status:", postResponse.status);
-
       if (postResponse.ok) {
         const data = await postResponse.json();
-        console.log("Post response data:", data);
         setCommunityAverage(data.average);
         setCommunityCount(data.count);
       } else {
-        console.log("Post failed, trying GET");
         // If post fails, still try to get the average
         const getResponse = await fetch(`/api/ratio/${layout}`);
         if (getResponse.ok) {
