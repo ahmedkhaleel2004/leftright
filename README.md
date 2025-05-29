@@ -2,6 +2,8 @@
 
 A modern typing test app that analyzes your typing speed for each hand separately, helping you understand your typing balance and compare with the community.
 
+https://leftright.space
+
 ## 🎯 Features
 
 - **Hand-specific WPM tracking** - See your words per minute for left and right hands separately
