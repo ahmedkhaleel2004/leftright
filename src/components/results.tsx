@@ -164,8 +164,10 @@ function CommunitySummary({
       <p className="mt-4 text-sm leading-relaxed text-pretty text-neutral-400">
         {community.count < 10 || p === null ? (
           <>
-            you&apos;re one of the first {community.count} {name} typists here. the chart fills in
-            as more people take the test.
+            {community.count <= 1
+              ? `you're the first ${name} typist here.`
+              : `you're one of the first ${community.count} ${name} typists here.`}{" "}
+            the chart fills in as more people take the test.
           </>
         ) : (
           <>

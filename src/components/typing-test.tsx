@@ -325,8 +325,12 @@ export function TypingTest() {
               >
                 ↻ new text
               </button>
-              {status === "idle" && (
-                <p className="max-w-md text-center leading-relaxed">
+              {/* Hidden rather than removed once typing starts, so nothing shifts. */}
+              <p
+                className={`max-w-md text-center leading-relaxed transition-opacity duration-300 ${
+                  status === "idle" ? "" : "invisible opacity-0"
+                }`}
+              >
                   {tint ? (
                     <>
                       letters are colored by the hand that types them:{" "}
@@ -337,8 +341,7 @@ export function TypingTest() {
                   {touch
                     ? "this test needs a physical keyboard. on a phone you're timing thumbs, not hands."
                     : "tab or esc for new text."}
-                </p>
-              )}
+              </p>
             </div>
           </div>
         )}
