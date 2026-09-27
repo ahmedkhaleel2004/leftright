@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent skills installed by vercel integrations
+/.agents/
+/.claude/
+skills-lock.json
+/.playwright-mcp/

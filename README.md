@@ -1,91 +1,25 @@
-# Left-Right Typing Test
+# left / right
 
-A modern typing test app that analyzes your typing speed for each hand separately, helping you understand your typing balance and compare with the community.
+A typing test that times each hand separately. See whether your left or right hand is faster, key by key, and compare with everyone else.
 
-https://leftright.space
+**https://leftrighthand.vercel.app**
 
-## 🎯 Features
+## How it works
 
-- **Hand-specific WPM tracking** - See your words per minute for left and right hands separately
-- **Multiple keyboard layouts** - Support for QWERTY, AZERTY, Dvorak, and Colemak
-- **Real-time accuracy tracking** - Monitor your typing accuracy as you type
-- **Community comparison** - Compare your left/right hand ratio with other users
-- **Beautiful UI** - Clean, modern interface built with Tailwind CSS
-- **No account required** - Start typing immediately
+- Every keystroke is timestamped. A key's speed is the gap since the previous keystroke, counted only when both keys were typed correctly with no backspace in between. Gaps over 1 second count as pauses and are ignored.
+- Each letter belongs to the hand that types it in touch typing, for QWERTY, AZERTY, Dvorak, Colemak, Colemak-DH and Workman.
+- Your right/left speed ratio goes into a shared histogram per layout (Upstash Redis), so you can see where you sit.
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (or npm/yarn)
-
-### Installation
-
-1. Clone the repository:
+## Development
 
 ```bash
-git clone https://github.com/ahmedkhaleel2004/leftright.git
-cd leftright
+bun install
+vercel link && vercel env pull   # KV_REST_API_URL / KV_REST_API_TOKEN from the Upstash integration
+bun dev
 ```
 
-2. Install dependencies:
+Next.js 16, React 19, Tailwind CSS 4, Upstash Redis, Vercel Analytics.
 
-```bash
-pnpm install
-```
+## Cost
 
-3. Set up environment variables:
-
-```bash
-cp .env.local.example .env.local
-```
-
-Add your Upstash Redis credentials to `.env.local`:
-
-```
-UPSTASH_REDIS_REST_URL=your_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_redis_token
-
-# Optional: GitHub Personal Access Token
-# Increases API rate limit from 60 to 5000 requests/hour
-# Create at: https://github.com/settings/tokens/new (no special permissions needed)
-GITHUB_TOKEN=your_github_token_here
-```
-
-4. Run the development server:
-
-```bash
-pnpm dev
-```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## 🛠️ Tech Stack
-
-- **Framework**: [Next.js 15](https://nextjs.org/) with App Router
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
-- **Database**: [Upstash Redis](https://upstash.com/) for community statistics
-- **Analytics**: [PostHog](https://posthog.com/)
-- **Runtime**: [Turbopack](https://turbo.build/pack) for fast development
-
-## 📊 How It Works
-
-1. Choose your keyboard layout
-2. Start typing the displayed text
-3. The app tracks which hand types each character based on your layout
-4. See your WPM for each hand and overall accuracy
-5. Compare your left/right hand ratio with the community average
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📝 License
-
-This project is private and not licensed for public use.
-
----
-
-Built with ❤️ using Next.js and TypeScript
+Built to run on free tiers: pages are static and revalidate hourly, the community histogram is served from the CDN (Redis is read at most once a minute per layout), and each finished test is one Redis write.
