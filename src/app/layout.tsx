@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -27,7 +26,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh bg-bg font-mono text-neutral-300 antialiased">
         {children}
-        <Analytics />
       </body>
     </html>
   );

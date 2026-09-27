@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import posthog from "posthog-js";
 import { LAYOUTS, type Hand, type LayoutId } from "~/lib/layouts";
 import { describeRatio, type Result } from "~/lib/stats";
 import { averageRatio, percentile, type Community } from "~/lib/community";
@@ -23,6 +24,18 @@ export function Results({
 }) {
   const community = useCommunity(layout, result.ratio);
   const { left, right, ratio } = result;
+
+  useEffect(() => {
+    posthog.capture("test_completed", {
+      layout,
+      test: label,
+      wpm: result.wpm,
+      accuracy: Math.round(result.accuracy * 100),
+      left_wpm: left.wpm,
+      right_wpm: right.wpm,
+      ratio,
+    });
+  }, [result, layout, label, left.wpm, right.wpm, ratio]);
   const verdict = ratio ? describeRatio(ratio) : null;
 
   return (
@@ -240,6 +253,7 @@ function Share({ left, right, layout }: { left: number; right: number; layout: L
   const text = `my left hand types ${left} wpm, my right hand ${right} wpm. which of your hands is faster?`;
 
   const share = async () => {
+    posthog.capture("result_shared", { method: "link", layout });
     if (navigator.share && matchMedia("(pointer: coarse)").matches) {
       await navigator.share({ text, url }).catch(() => {});
       return;
@@ -261,6 +275,7 @@ function Share({ left, right, layout }: { left: number; right: number; layout: L
         target="_blank"
         rel="noreferrer"
         href={`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`}
+        onClick={() => posthog.capture("result_shared", { method: "x", layout })}
       >
         post on x
       </a>

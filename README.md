@@ -48,6 +48,6 @@ Only the community histogram needs Redis. Everything else runs without it.
 
 ## Stack
 
-[Next.js 16](https://nextjs.org) · React 19 · Tailwind CSS 4 · [Upstash Redis](https://upstash.com) · Vercel Analytics · Bun
+[Next.js 16](https://nextjs.org) · React 19 · Tailwind CSS 4 · [Upstash Redis](https://upstash.com) · [PostHog](https://posthog.com) · Bun
 
 Built to cost next to nothing: pages are static and refresh hourly, community stats are served from Vercel's CDN (Redis is read at most once a minute per layout), and a finished test is a single Redis write.
