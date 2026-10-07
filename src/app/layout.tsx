@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SITE_URL } from "~/lib/site";
 import "./globals.css";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -10,7 +11,7 @@ const description =
   "A typing test that times each hand separately. See whether your left or right hand is faster, key by key, and compare with everyone else.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://leftrighthand.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title,
   description,
   openGraph: { title, description, siteName: "left / right", type: "website" },

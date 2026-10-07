@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://leftrighthand.vercel.app">
+  <a href="https://leftrighthand.gitdiagram-presence.workers.dev">
     <img src=".github/banner.png" alt="left / right: which hand types faster?" width="100%" />
   </a>
 </p>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://leftrighthand.vercel.app"><b>leftrighthand.vercel.app</b></a>
+  <a href="https://leftrighthand.gitdiagram-presence.workers.dev"><b>leftrighthand.gitdiagram-presence.workers.dev</b></a>
 </p>
 
 <p align="center">
@@ -40,14 +40,18 @@ Each letter belongs to the hand that types it in standard touch typing for the c
 
 ```bash
 bun install
-vercel link && vercel env pull   # Upstash Redis credentials (KV_REST_API_URL, KV_REST_API_TOKEN)
+bunx wrangler d1 migrations apply leftrighthand --local   # a local database for the community histogram
 bun dev
 ```
 
-Only the community histogram needs Redis. Everything else runs without it.
+The community histogram is a small Cloudflare D1 table. In development it lives in a local file under `.wrangler/`.
+
+## Deploy
+
+The site runs on one Cloudflare Worker, built with [OpenNext](https://opennext.js.org/cloudflare). A push to `main` deploys it (`.github/workflows/deploy.yml`); `bun run deploy` does the same by hand. `vercel.json` only redirects the old `leftrighthand.vercel.app` address to the new one.
 
 ## Stack
 
-[Next.js 16](https://nextjs.org) · React 19 · Tailwind CSS 4 · [Upstash Redis](https://upstash.com) · [PostHog](https://posthog.com) · Bun
+[Next.js 16](https://nextjs.org) · React 19 · Tailwind CSS 4 · [Cloudflare Workers](https://workers.cloudflare.com) and D1 · [PostHog](https://posthog.com) · Bun
 
-Built to cost next to nothing: pages are static and refresh hourly, community stats are served from Vercel's CDN (Redis is read at most once a minute per layout), and a finished test is a single Redis write.
+Built to cost next to nothing: pages are static and refresh hourly, and a finished test is a single database write.

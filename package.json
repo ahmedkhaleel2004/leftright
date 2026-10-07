@@ -8,10 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
-    "@upstash/redis": "^1.39.0",
+    "@opennextjs/cloudflare": "1.20.7",
     "next": "^16.3.6",
     "posthog-js": "^1.434.15",
     "react": "^19.3.0",
@@ -25,7 +27,8 @@
     "eslint": "^9",
     "eslint-config-next": "^16.3.6",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9"
+    "typescript": "^5.9",
+    "wrangler": "^4.146.0"
   },
   "trustedDependencies": [
     "unrs-resolver"

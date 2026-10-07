@@ -1,0 +1,24 @@
+// The site runs on one Cloudflare Worker (built by OpenNext).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "leftrighthand",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "account_id": "8a4f309f2639721dc9f4f0d1790fd6d5",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "leftrighthand" }],
+  // Community histogram (migrations/).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "leftrighthand",
+      "database_id": "c9ffaaa3-a93f-48dd-858a-29684bcadaa9"
+    }
+  ],
+  // Rendered pages (hourly refresh) and share pages.
+  "kv_namespaces": [{ "binding": "NEXT_INC_CACHE_KV", "id": "cd2821c35bc8459cad6923d10a89e921" }],
+  "observability": { "enabled": true }
+}
