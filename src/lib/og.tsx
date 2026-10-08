@@ -30,7 +30,7 @@ export async function renderOg(shared: Shared | null) {
       : "my hands are evenly matched";
   const leftValue = shared ? String(shared.left) : "?";
   const rightValue = shared ? String(shared.right) : "?";
-  const footer = shared ? `wpm on ${shared.layout} · test yours at leftrighthand.vercel.app` : "a typing test that times each hand · leftrighthand.vercel.app";
+  const footer = shared ? `wpm on ${shared.layout} · test yours at leftrighthand.pages.dev` : "a typing test that times each hand · leftrighthand.pages.dev";
 
   const font = await loadFont(`left/right${headline}${leftValue}${rightValue}${footer}handwpm ?`);
 

@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
       { source: "/ingest/:path*", destination: "https://us.i.posthog.com/:path*" },
     ];
   },
+  // The Worker's own address sends people to the short one (pages-proxy/).
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "leftrighthand.gitdiagram-presence.workers.dev" }],
+        destination: "https://leftrighthand.pages.dev/:path*",
+        permanent: true,
+      },
+    ];
+  },
   skipTrailingSlashRedirect: true,
 };
 

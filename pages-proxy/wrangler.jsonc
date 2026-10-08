@@ -1,0 +1,10 @@
+// Gives the site its short address, leftrighthand.pages.dev. Workers only get
+// <name>.<account>.workers.dev, so this Pages project sits in front and passes
+// everything to the Worker. Deployed by hand: `bun run deploy:address`.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "leftrighthand",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-09-01",
+  "services": [{ "binding": "SITE", "service": "leftrighthand" }]
+}

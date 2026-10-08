@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://leftrighthand.gitdiagram-presence.workers.dev">
+  <a href="https://leftrighthand.pages.dev">
     <img src=".github/banner.png" alt="left / right: which hand types faster?" width="100%" />
   </a>
 </p>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://leftrighthand.gitdiagram-presence.workers.dev"><b>leftrighthand.gitdiagram-presence.workers.dev</b></a>
+  <a href="https://leftrighthand.pages.dev"><b>leftrighthand.pages.dev</b></a>
 </p>
 
 <p align="center">
@@ -48,7 +48,7 @@ The community histogram is a small Cloudflare D1 table. In development it lives 
 
 ## Deploy
 
-The site runs on one Cloudflare Worker, built with [OpenNext](https://opennext.js.org/cloudflare). A push to `main` deploys it (`.github/workflows/deploy.yml`); `bun run deploy` does the same by hand. `vercel.json` only redirects the old `leftrighthand.vercel.app` address to the new one.
+The site runs on one Cloudflare Worker, built with [OpenNext](https://opennext.js.org/cloudflare). A push to `main` deploys it (`.github/workflows/deploy.yml`); `bun run deploy` does the same by hand. The short address, `leftrighthand.pages.dev`, is a small Cloudflare Pages project (`pages-proxy/`) that passes every request to the Worker; it only needs `bun run deploy:address` if that folder changes. `vercel.json` only redirects the old `leftrighthand.vercel.app` address to the new one.
 
 ## Stack
 
